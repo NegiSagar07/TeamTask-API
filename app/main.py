@@ -1,15 +1,16 @@
 from fastapi import FastAPI
-from app.db import get_db_connection
+from app.db import engine
+from sqlalchemy import text
 
 
 app = FastAPI()
 
 
 @app.on_event("startup")
-def startup_event():
-    conn = get_db_connection()
-    conn.close()
-    print("Database connected successfully")
+async def startup_event():
+    async with engine.connect() as conn:
+        await conn.execute(text("SELECT 1"))
+    print("async database connected successfully")
 
 
 @app.get("/")

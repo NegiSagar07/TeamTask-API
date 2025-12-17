@@ -1,3 +1,7 @@
 fastapi
 uvicorn[standard]
-psycopg2-binary
+
+sqlalchemy>=2.0
+asyncpg
+
+alembic
