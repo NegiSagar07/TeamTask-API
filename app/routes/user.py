@@ -1,31 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-
-from app.db import get_db_session
+from fastapi import APIRouter, Depends, HTTPException, status
 from app.schemas.user import UserCreate, UserResponse
-from app.models.user import User
-from app.crud.user import create_user
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.db import get_db_session
+from app.crud.user import create_user, get_user_by_email
 
-router = APIRouter(prefix="/users", tags=["users"])
+
+router = APIRouter(prefix="/users", tags=["Users Register"])
 
 @router.post("/", response_model=UserResponse)
-async def register_user(
-    payload: UserCreate,
-    db: AsyncSession = Depends(get_db_session),
-):
-    result = await db.execute(
-        select(User).where(User.email == payload.email)
-    )
-    existing_user = result.scalar_one_or_none()
+async def register_user(user: UserCreate, db: AsyncSession = Depends(get_db_session)):
+    
+    email = user.email.lower()
+    db_user = await get_user_by_email(db, email)
+    if db_user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="email already registered")
+    
+    hashed_password = "abcd-vaha-se-nikle-pandaji"
 
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+    new_user = await create_user(db, email, hashed_password)
 
-    user = await create_user(
-        db=db,
-        email=payload.email,
-        hashed_password=payload.password,  # hashing comes next step
-    )
-
-    return user
+    return new_user
