@@ -4,6 +4,7 @@ from app.schemas.auth import LoginRequest
 from app.db import get_db_session
 from app.crud.user import get_user_by_email
 from app.core.security import verify_password
+from app.core.jwt import create_access_token
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -13,12 +14,17 @@ async def login(payload: LoginRequest, db: AsyncSession = Depends(get_db_session
 
     email = payload.email.lower()
 
-    db_user = await get_user_by_email(db, email)
+    user = await get_user_by_email(db, email)
 
-    if not db_user:
+    if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="invalid credentials")
     
-    if not verify_password(payload.password, db_user.hashed_password):
+    if not verify_password(payload.password, user.hashed_password):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="wrong password")
     
-    return {"message": "login successful"}
+    access_token = create_access_token(data={"sub": str(user.id)})
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+    }
