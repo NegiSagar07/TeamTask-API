@@ -6,5 +6,6 @@ class Project(Base):
     __tablename__ = "projects"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(255))
+    title: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(String(290), nullable=True)
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
