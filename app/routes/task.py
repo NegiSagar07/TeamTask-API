@@ -17,5 +17,10 @@ async def create_new_task(task_in: TaskCreate, db: AsyncSession = Depends(get_db
 
 @router.get("/", response_model=list[TaskResponse])
 async def read_my_tasks(db: AsyncSession = Depends(get_db_session), current_user: User = Depends(get_current_user)):
+    
     my_tasks = await get_task_by_user(db=db, user_id=current_user.id)
+
+    if not my_tasks:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="you do not have any tasks yet!")
+    
     return my_tasks
