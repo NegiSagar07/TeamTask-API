@@ -19,6 +19,13 @@ async def create_task(db: AsyncSession, task_in: TaskCreate, user_id: int) -> Ta
     return task
 
 
+async def get_tasks_by_project(db: AsyncSession, project_id: int) -> list[Task] | None:
+    query = select(Task).where(Task.project_id == project_id)
+    result = await db.execute(query)
+
+    return result.scalars().all()
+
+
 async def get_task_by_user(db: AsyncSession, user_id: int):
     query = select(Task).where(Task.created_by_id == user_id)
     result = await db.execute(query)
