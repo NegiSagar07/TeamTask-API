@@ -4,7 +4,7 @@ from app.schemas.task import TaskCreate, TaskResponse, TaskUpdate
 from app.db import get_db_session
 from app.core.dependencies import get_current_user
 from app.models.user import User
-from app.crud.task import create_task, get_tasks_by_project
+from app.crud.task import create_task, get_tasks_by_project, update_task, get_task_by_id
 from app.crud.project_member import get_member
 from app.crud.project import get_my_project
 
@@ -38,3 +38,34 @@ async def read_all_task_of_project(project_id: int, db: AsyncSession = Depends(g
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="you do not have any tasks yet!")
     
     return my_tasks
+
+
+@router.patch("/{task.id}", response_model=TaskResponse)
+async def update_existing_task(task_id: int, task_in: TaskUpdate, db: AsyncSession = Depends(get_db_session), current_user: User = Depends(get_current_user)):
+
+    task = await get_task_by_id(db=db, task_id=task_id)
+    if not task:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+    
+    project_owner = await get_my_project(db=db, user_id=current_user.id, project_id=task.project_id)
+    project_member = await get_member(db=db, project_id=task.project_id, user_id=current_user.id)
+
+    if not project_owner or not project_member:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="you are not authorized to update this task")
+    
+    if not project_owner:
+        restricted_fields = {"assigned_to_id", "priority"}
+
+        incoming_fields = set(task_in.dict(exclude_unset=True).keys())
+
+        if restricted_fields & incoming_fields:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="only project owner can rassign or change priority")
+        
+    if task_in.assigned_to_id:
+        db_member = await get_member(db=db, project_id=task.project_id, user_id=task_in.assigned_to_id)
+        if not db_member:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Assigned user is not part of the project")
+        
+    updated_task = await update_task(db=db, task_in=task_in, task=task)
+
+    return updated_task
